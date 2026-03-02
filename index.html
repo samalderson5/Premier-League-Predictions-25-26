@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>PL Prediction League</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        h1 { text-align: center; color: #333; margin: 0 0 12px; font-size: clamp(1.1em, 4vw, 2em); line-height: 1.2; }
+
+        .tab-bar { display: flex; overflow-x: auto; gap: 4px; margin-bottom: 14px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-btn { flex: 0 0 auto; padding: 8px 14px; border: none; border-radius: 20px; background: #e9ecef; color: #555; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s, color .2s; }
+        .tab-btn.active { background: #3b4e87; color: white; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .controls { display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f9ff; border-radius: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .controls label { font-weight: bold; color: #333; font-size: 14px; }
+        .controls select { padding: 8px 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; flex: 1; min-width: 120px; }
+
+        .section-title { background: #3b4e87; color: white; padding: 10px 12px; font-size: 1em; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .section-title span { font-size: .9em; }
+        .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .add-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+        .add-btn.orange { background: #e67e22; }
+        .add-btn.teal   { background: #27ae60; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 14px; background: #f8f9ff; border-radius: 0 0 8px 8px; margin-bottom: 18px; }
+        @media (max-width: 480px) { .cards-grid { grid-template-columns: 1fr; padding: 10px; gap: 10px; } }
+
+        .matchup-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid #e0e0e0; text-align: center; }
+        .matchup-card.completed { border-color: #28a745; background: #f8fff9; }
+        .matchup-players select { margin: 4px; padding: 5px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; max-width: 120px; }
+        .matchup-scores { display: flex; justify-content: center; align-items: center; margin: 8px 0; gap: 8px; }
+        .player-score { font-size: 22px; font-weight: bold; min-width: 36px; }
+        .score-separator { font-size: 18px; color: #666; }
+        .winner { color: #28a745; font-weight: bold; font-size: 13px; }
+
+        .fixture-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid #e0e0e0; }
+        .fixture-card.has-result { border-color: #28a745; background: #f8fff9; }
+        .team-select { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; margin: 3px 0; }
+        .score-input { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 8px 0; }
+        .score-input input { width: 52px; height: 38px; text-align: center; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; font-weight: bold; }
+        .vs { font-size: 13px; color: #666; font-weight: bold; }
+        .remove-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%; margin-top: 6px; }
+
+        .prediction-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 18px; }
+        .prediction-table { min-width: 600px; border-collapse: collapse; width: 100%; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .prediction-table th { background: #3b4e87; color: white; padding: 10px 6px; text-align: center; font-size: 12px; min-width: 90px; }
+        .prediction-table th:first-child { min-width: 80px; text-align: left; padding-left: 10px; }
+        .prediction-table td { padding: 6px 4px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
+        .prediction-table td:first-child { background: #667eea; color: white; font-weight: bold; text-align: left; padding-left: 10px; }
+        .prediction-input { width: 60px; padding: 4px; text-align: center; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; }
+        .score-display { font-weight: bold; padding: 2px 6px; border-radius: 3px; display: inline-block; min-width: 18px; font-size: 12px; }
+        .score-3 { background: #28a745; color: white; }
+        .score-1 { background: #ffc107; color: black; }
+        .score-0 { background: #dc3545; color: white; }
+
+        /* ── LEAGUE TABLE STYLES ── */
+        .table-section { margin-bottom: 20px; }
+        .table-header-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #3b4e87; color: white; padding: 10px 14px;
+            border-radius: 8px 8px 0 0; cursor: pointer; user-select: none;
+        }
+        .table-header-bar h3 { margin: 0; font-size: 15px; }
+        .collapse-icon { font-size: 18px; transition: transform .25s; }
+        .collapse-icon.collapsed { transform: rotate(-90deg); }
+        .table-body-wrap { overflow: hidden; transition: max-height .35s ease; }
+        .table-body-wrap.collapsed { max-height: 0 !important; }
+
+        .league-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .league-table-wrap { min-width: 480px; }
+        .league-table-wrap table { width: 100%; border-collapse: collapse; }
+        .league-table-wrap th { background: #3b4e87; color: white; padding: 10px 6px; text-align: center; font-size: 12px; white-space: nowrap; }
+        .league-table-wrap th:nth-child(2) { text-align: left; padding-left: 8px; }
+        .league-table-wrap td { padding: 9px 6px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
+        .league-table-wrap td:nth-child(2) { text-align: left; font-weight: bold; padding-left: 8px; }
+        .league-table-wrap tr:nth-child(even) { background: #f8f9fa; }
+        .diff-positive { color: #28a745; }
+        .diff-negative { color: #dc3545; }
+
+        /* Highlight top 3 */
+        .rank-1 td:first-child { color: #f1c40f; font-weight: bold; font-size: 16px; }
+        .rank-2 td:first-child { color: #bdc3c7; font-weight: bold; font-size: 15px; }
+        .rank-3 td:first-child { color: #cd6133; font-weight: bold; font-size: 14px; }
+
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+        .btn { padding: 11px 20px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .btn-primary   { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-purple    { background: #8e44ad; color: white; }
+
+        .save-load-section { background: #e8f4f8; padding: 14px; border-radius: 8px; margin-bottom: 16px; }
+        .save-load-section h3 { margin: 0 0 10px; font-size: 15px; }
+        .save-btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
+        .save-status { margin: 8px 0; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+        .save-success { background: #d4edda; color: #155724; }
+        .save-error   { background: #f8d7da; color: #721c24; }
+        #storageStatus { padding: 10px; background: #e7f3ff; border-radius: 8px; margin-bottom: 12px; border: 2px solid #0066cc; font-size: 13px; }
+        .paste-box { display: none; background: white; border: 2px solid #3b4e87; border-radius: 8px; padding: 16px; margin-top: 12px; }
+        .paste-box h4 { margin: 0 0 8px; color: #3b4e87; font-size: 14px; }
+        .paste-box textarea { width: 100%; height: 140px; border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
+        .paste-box-btns { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .week-info { background: #e9ecef; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; font-size: 13px; line-height: 1.6; }
+        .current-week { font-size: clamp(18px, 5vw, 26px); font-weight: bold; color: #3b4e87; margin-bottom: 6px; }
+        .team-assignments { font-size: 12px; color: #3b4e87; margin-top: 6px; cursor: pointer; font-weight: 600; }
+        .team-assignments:hover { text-decoration: underline; }
+
+        .team-popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; }
+        .team-popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: white; border: 3px solid #3b4e87; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; width: min(500px, 92vw); max-height: 80vh; overflow-y: auto; }
+        .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 12px; }
+        .team-item { padding: 7px 10px; background: #f8f9ff; border-radius: 5px; border: 1px solid #e0e0e0; font-size: 13px; }
+        .team-item strong { color: #3b4e87; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; }
+        .modal-box { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: white; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; width: min(600px, 94vw); max-height: 85vh; overflow-y: auto; }
+        .modal-box h3 { margin-top: 0; }
+        #formQuestionsList { background: #f8f9ff; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; line-height: 2; white-space: pre-wrap; border: 2px solid #e0e0e0; }
+        .modal-btns { text-align: center; margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+        .import-box { display: none; background: white; border: 2px solid #28a745; border-radius: 8px; padding: 16px; margin-top: 12px; }
+        .import-box h4 { margin: 0 0 8px; color: #28a745; font-size: 14px; }
+        .import-info { background: #e7f3ff; padding: 10px; border-radius: 5px; margin-bottom: 12px; font-size: 12px; }
+        .import-box textarea { width: 100%; height: 200px; border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
+        #importPreview { margin: 12px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none; font-size: 13px; }
+        .import-btns { margin-top: 10px; text-align: center; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+        .placeholder-text { grid-column: 1/-1; text-align: center; color: #888; font-style: italic; padding: 20px; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🏆 PL Prediction League 2025/26</h1>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('setup')">⚙️ Setup</button>
+        <button class="tab-btn" onclick="switchTab('predictions')">🎯 Predictions</button>
+        <button class="tab-btn" onclick="switchTab('table')">📊 Table</button>
+        <button class="tab-btn" onclick="switchTab('data')">💾 Data</button>
+    </div>
+
+    <!-- ══ SETUP TAB ══ -->
+    <div id="tab-setup" class="tab-panel active">
+        <div class="controls">
+            <label>Gameweek:</label>
+            <select id="weekSelect" onchange="changeWeek()">
+                <!-- GW 1-38 -->
+                <option value="1">GW 1</option><option value="2">GW 2</option><option value="3">GW 3</option><option value="4">GW 4</option><option value="5">GW 5</option><option value="6">GW 6</option><option value="7">GW 7</option><option value="8">GW 8</option><option value="9">GW 9</option><option value="10">GW 10</option><option value="11">GW 11</option><option value="12">GW 12</option><option value="13">GW 13</option><option value="14">GW 14</option><option value="15">GW 15</option><option value="16">GW 16</option><option value="17">GW 17</option><option value="18">GW 18</option><option value="19">GW 19</option><option value="20">GW 20</option><option value="21">GW 21</option><option value="22">GW 22</option><option value="23">GW 23</option><option value="24">GW 24</option><option value="25">GW 25</option><option value="26">GW 26</option><option value="27">GW 27</option><option value="28">GW 28</option><option value="29">GW 29</option><option value="30">GW 30</option><option value="31">GW 31</option><option value="32">GW 32</option><option value="33">GW 33</option><option value="34">GW 34</option><option value="35">GW 35</option><option value="36">GW 36</option><option value="37">GW 37</option><option value="38">GW 38</option>
+            </select>
+        </div>
+
+        <div class="week-info">
+            <div class="current-week" id="currentWeekDisplay">Gameweek 1</div>
+            <div><strong>Scoring:</strong> Exact = 3pts &nbsp;|&nbsp; Correct result = 1pt &nbsp;|&nbsp; Wrong = 0pts</div>
+            <div><strong>H2H:</strong> Win = 3pts &nbsp;|&nbsp; Draw = 1pt each &nbsp;|&nbsp; Loss = 0pts</div>
+            <div class="team-assignments" onclick="showTeamAssignments()">📋 View Team Assignments</div>
+        </div>
+
+        <div class="section-title">👥 Head-to-Head Matchups <button class="add-btn" onclick="addMatchup()">+ Add</button></div>
+        <div class="cards-grid" id="matchupsGrid"><div class="placeholder-text">Click "+ Add" to set up this week's pairings</div></div>
+
+        <div class="section-title">
+            ⚽ Fixtures &amp; Results
+            <div class="btn-row">
+                <button class="add-btn orange" onclick="loadFixturesFromAPI()" id="loadFixturesBtn">🔄 Load GW</button>
+                <button class="add-btn teal"   onclick="loadResultsFromAPI()"  id="loadResultsBtn">📥 Results</button>
+                <button class="add-btn"         onclick="addFixture()">+ Add</button>
+            </div>
+        </div>
+        <div class="cards-grid" id="fixturesGrid"><div class="placeholder-text">Load or add this week's fixtures</div></div>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary"   onclick="calculateWeekScores()">📊 Calculate</button>
+            <button class="btn btn-secondary" onclick="clearWeekData()">🗑️ Clear Week</button>
+            <button class="btn btn-purple"    onclick="generateFormQuestions()">📋 Form Questions</button>
+        </div>
+    </div>
+
+    <!-- ══ PREDICTIONS TAB ══ -->
+    <div id="tab-predictions" class="tab-panel">
+        <div class="section-title" style="border-radius:8px;margin-bottom:12px;">🎯 Player Predictions — <span id="predWeekLabel">GW 1</span></div>
+        <div id="mobilePredCards" style="display:none;"></div>
+        <div id="desktopPredTable">
+            <div class="prediction-scroll">
+                <table class="prediction-table" id="predictionsTable">
+                    <thead id="tableHeaders"><tr><th>Player</th><th>Total</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ TABLE TAB ══ -->
+    <div id="tab-table" class="tab-panel">
+
+        <!-- League Points Table (collapsible) -->
+        <div class="table-section">
+            <div class="table-header-bar" onclick="toggleTable('pts')">
+                <h3>🏆 League Table — by Points</h3>
+                <span class="collapse-icon" id="icon-pts">▼</span>
+            </div>
+            <div class="table-body-wrap" id="wrap-pts">
+                <div class="league-scroll">
+                    <div class="league-table-wrap">
+                        <table>
+                            <thead><tr><th>#</th><th>Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F</th><th>A</th><th>+/-</th><th>Pts</th></tr></thead>
+                            <tbody id="leagueTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Points For Table (collapsible) -->
+        <div class="table-section">
+            <div class="table-header-bar" onclick="toggleTable('pf')" style="background:#27ae60;">
+                <h3>🎯 Scoring Table — by Points For</h3>
+                <span class="collapse-icon" id="icon-pf">▼</span>
+            </div>
+            <div class="table-body-wrap" id="wrap-pf">
+                <div class="league-scroll">
+                    <div class="league-table-wrap">
+                        <table>
+                            <thead><tr style="background:#27ae60;"><th>#</th><th>Player</th><th>P</th><th>F</th><th>A</th><th>+/-</th><th>Avg/GW</th></tr></thead>
+                            <tbody id="scoringTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ DATA TAB ══ -->
+    <div id="tab-data" class="tab-panel">
+        <div class="save-load-section">
+            <h3>⚡ Import from Google Sheets</h3>
+            <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="showSheetImportDialog()">📋 Paste Google Sheet Data</button>
+
+            <div id="storageStatus"><strong>💾 Auto-Save:</strong> <span id="storageStatusText">Checking…</span></div>
+
+            <h3>💾 Manual Backup</h3>
+            <div class="save-btn-grid">
+                <button class="btn btn-primary"   onclick="copyDataToClipboard()">📋 Copy Code</button>
+                <button class="btn btn-secondary" onclick="showPasteDialog()">📥 Paste Code</button>
+                <button class="btn btn-primary"   onclick="downloadSave()">💾 Download JSON</button>
+                <button class="btn btn-primary"   onclick="downloadTxt()" style="background:#8e44ad;">📄 Download TXT</button>
+                <input type="file" id="importFile" accept=".json,.txt" style="display:none;" onchange="uploadSave(event)">
+                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📂 Load File (.json/.txt)</button>
+                <button class="btn btn-secondary" onclick="clearAllData()" style="background:#dc3545;">🗑️ Clear All</button>
+            </div>
+            <div id="saveStatus" class="save-status" style="display:none;"></div>
+            <p style="font-size:12px;color:#666;margin:8px 0 0;">Data auto-saves across sessions. Use manual backup for extra safety.</p>
+
+            <div class="paste-box" id="pasteDialog">
+                <h4>Paste Your Backup Code</h4>
+                <textarea id="pasteArea" placeholder="Paste your backup code here…"></textarea>
+                <div class="paste-box-btns">
+                    <button class="btn btn-primary" onclick="loadFromPaste()">📥 Load</button>
+                    <button class="btn btn-secondary" onclick="hidePasteDialog()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="import-box" id="sheetImportDialog">
+                <h4>📊 Import from Google Sheets</h4>
+                <div class="import-info">1. Select ALL data in your sheet (including headers)<br>2. Copy (Ctrl+C / Cmd+C)<br>3. Paste below &amp; click Import</div>
+                <textarea id="sheetPasteArea" placeholder="Paste your Google Sheets data here…"></textarea>
+                <div id="importPreview"><strong>Preview:</strong><div id="importPreviewContent" style="margin-top:8px;"></div></div>
+                <div class="import-btns">
+                    <button class="btn btn-primary"  onclick="previewSheetImport()">👁️ Preview</button>
+                    <button class="btn btn-primary"  onclick="importSheetData()">📥 Import</button>
+                    <button class="btn btn-secondary" onclick="hideSheetImportDialog()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team assignments popup -->
+<div class="team-popup-overlay" id="teamPopupOverlay" onclick="hideTeamAssignments()"></div>
+<div class="team-popup" id="teamPopup">
+    <h3 style="margin-top:0;color:#3b4e87;text-align:center;">Team Assignments</h3>
+    <div class="team-grid">
+        <div class="team-item"><strong>Jack:</strong> Arsenal</div><div class="team-item"><strong>Ross:</strong> Aston Villa</div>
+        <div class="team-item"><strong>Alex:</strong> Bournemouth</div><div class="team-item"><strong>Ian:</strong> Brentford</div>
+        <div class="team-item"><strong>Kib:</strong> Brighton</div><div class="team-item"><strong>Adam:</strong> Burnley</div>
+        <div class="team-item"><strong>Cam:</strong> Chelsea</div><div class="team-item"><strong>Brewer:</strong> Crystal Palace</div>
+        <div class="team-item"><strong>Jag:</strong> Everton</div><div class="team-item"><strong>Joe M:</strong> Fulham</div>
+        <div class="team-item"><strong>Joe A:</strong> Leeds United</div><div class="team-item"><strong>Ryan:</strong> Liverpool</div>
+        <div class="team-item"><strong>Haz:</strong> Man City</div><div class="team-item"><strong>Mat:</strong> Man United</div>
+        <div class="team-item"><strong>Cal:</strong> Newcastle</div><div class="team-item"><strong>Frenchy:</strong> Notts Forest</div>
+        <div class="team-item"><strong>Sam:</strong> Sunderland</div><div class="team-item"><strong>JD:</strong> Tottenham</div>
+        <div class="team-item"><strong>Ben:</strong> West Ham</div><div class="team-item"><strong>Divesh:</strong> Wolves</div>
+    </div>
+    <div style="text-align:center;margin-top:16px;"><button class="btn btn-secondary" onclick="hideTeamAssignments()">Close</button></div>
+</div>
+
+<!-- Form questions modal -->
+<div class="modal-overlay" id="formQuestionsOverlay" onclick="hideFormQuestions()"></div>
+<div class="modal-box" id="formQuestionsModal">
+    <h3 style="color:#8e44ad;">📋 Google Form Questions — GW <span id="formGWNumber"></span></h3>
+    <p style="color:#666;font-size:12px;">Copy into Google Form as <strong>Short Answer</strong> questions.</p>
+    <div id="formQuestionsList"></div>
+    <div class="modal-btns">
+        <button class="btn btn-purple" onclick="copyFormQuestions()">📋 Copy</button>
+        <button class="btn btn-secondary" onclick="hideFormQuestions()">Close</button>
+    </div>
+    <div id="formCopyStatus" style="margin-top:8px;text-align:center;font-weight:bold;display:none;font-size:13px;"></div>
+</div>
+
+<script>
+var premierLeagueTeams = ['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Burnley','Chelsea','Crystal Palace','Everton','Fulham','Leeds United','Liverpool','Manchester City','Manchester United','Newcastle','Nottingham Forest','Sunderland','Tottenham','West Ham','Wolves'];
+var teamNameMap = {'man city':'Manchester City','man utd':'Manchester United','man united':'Manchester United','spurs':'Tottenham','nottm forest':'Nottingham Forest',"nott'm forest":'Nottingham Forest','notts forest':'Nottingham Forest','nottingham':'Nottingham Forest','forest':'Nottingham Forest','brighton & hove albion':'Brighton','brighton & ha':'Brighton','west ham united':'West Ham','wolverhampton':'Wolves','wol':'Wolves','wolv':'Wolves','newcastle united':'Newcastle','leeds':'Leeds United','sunderland afc':'Sunderland','crystal palace':'Crystal Palace','c palace':'Crystal Palace','palace':'Crystal Palace'};
+function normalizeTeamName(name) {
+    if (!name) return '';
+    var cleaned = name.trim().replace(/[\r\n\t]/g,'');
+    var lower = cleaned.toLowerCase();
+    if (teamNameMap[lower]) return teamNameMap[lower];
+    for (var i=0;i<premierLeagueTeams.length;i++) if (premierLeagueTeams[i].toLowerCase()===lower) return premierLeagueTeams[i];
+    return cleaned;
+}
+
+var allPlayers = ['Cam','Ross','Joe A','Joe M','JD','Ben','Adam','Sam','Ian','Jack','Haz','Alex','Brewer','Ryan','Kib','Frenchy','Divesh','Cal','Mat','Jag'];
+var playerTeams = {'Jack':'Arsenal','Ross':'Aston Villa','Alex':'Bournemouth','Ian':'Brentford','Kib':'Brighton','Adam':'Burnley','Cam':'Chelsea','Brewer':'Crystal Palace','Jag':'Everton','Joe M':'Fulham','Joe A':'Leeds United','Ryan':'Liverpool','Haz':'Manchester City','Mat':'Manchester United','Cal':'Newcastle','Frenchy':'Nottingham Forest','Sam':'Sunderland','JD':'Tottenham','Ben':'West Ham','Divesh':'Wolves'};
+var teamPlayers = {};
+for (var p in playerTeams) teamPlayers[playerTeams[p]] = p;
+
+var gwDateHints = {1:"August 15-18 2025",2:"August 22-25 2025",3:"August 30 - September 1 2025",4:"September 13-14 2025",5:"September 20-21 2025",6:"September 27-28 2025",7:"October 3-5 2025",8:"October 18-19 2025",9:"October 25-26 2025",10:"November 1-2 2025",11:"November 8-9 2025",12:"November 22-23 2025",13:"November 29-30 2025",14:"December 2-3 2025",15:"December 6-7 2025",16:"December 13-14 2025",17:"December 20-21 2025",18:"December 26-27 2025",19:"January 1 2026",20:"January 3-4 2026",21:"January 7-8 2026",22:"January 17-18 2026",23:"January 24-25 2026",24:"January 31 - February 1 2026",25:"February 7-8 2026",26:"February 11 2026",27:"February 21-22 2026",28:"February 28 - March 1 2026",29:"March 3-5 2026",30:"March 14-15 2026",31:"March 21-22 2026",32:"April 1-5 2026",33:"April 11-12 2026",34:"April 18-19 2026",35:"April 25-26 2026",36:"May 2-3 2026",37:"May 9-10 2026",38:"May 24 2026"};
+
+// Hardcoded fixtures per GW — fallback when API fails (e.g. on mobile)
+var gwFixtures = {
+    29:[
+        {home:"Bournemouth",away:"Brentford"},{home:"Everton",away:"Burnley"},
+        {home:"Leeds United",away:"Sunderland"},{home:"Wolves",away:"Liverpool"},
+        {home:"Aston Villa",away:"Chelsea"},{home:"Brighton",away:"Arsenal"},
+        {home:"Fulham",away:"West Ham"},{home:"Manchester City",away:"Nottingham Forest"},
+        {home:"Newcastle",away:"Manchester United"},{home:"Tottenham",away:"Crystal Palace"}
+    ]
+};
+
+var currentWeek = 1;
+var weekData = {};
+var seasonStats = {};
+for (var i=0;i<allPlayers.length;i++) seasonStats[allPlayers[i]]={played:0,won:0,drawn:0,lost:0,pointsFor:0,pointsAgainst:0,leaguePoints:0};
+
+// ── COLLAPSIBLE TABLES ──
+var tableCollapsed = { pts: false, pf: false };
+function toggleTable(key) {
+    tableCollapsed[key] = !tableCollapsed[key];
+    var wrap = document.getElementById('wrap-' + key);
+    var icon = document.getElementById('icon-' + key);
+    if (tableCollapsed[key]) {
+        wrap.style.maxHeight = wrap.scrollHeight + 'px';
+        requestAnimationFrame(function() { wrap.classList.add('collapsed'); });
+        icon.classList.add('collapsed');
+    } else {
+        wrap.classList.remove('collapsed');
+        icon.classList.remove('collapsed');
+        wrap.style.maxHeight = wrap.scrollHeight + 'px';
+        setTimeout(function() { wrap.style.maxHeight = ''; }, 350);
+    }
+}
+function initTableHeights() {
+    ['pts','pf'].forEach(function(k) {
+        var w = document.getElementById('wrap-' + k);
+        if (w) w.style.maxHeight = '';
+    });
+}
+
+// ── TABS ──
+function switchTab(id) {
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.getElementById('tab-' + id).classList.add('active');
+    var btns = document.querySelectorAll('.tab-btn');
+    var map = {setup:0,predictions:1,table:2,data:3};
+    btns[map[id]].classList.add('active');
+    if (id==='predictions') renderPredictionsView();
+    if (id==='table') { updateLeagueTable(); initTableHeights(); }
+}
+
+// ── RESPONSIVE PREDICTIONS ──
+function renderPredictionsView() {
+    document.getElementById('predWeekLabel').textContent = 'GW ' + currentWeek;
+    var isMobile = window.innerWidth < 640;
+    document.getElementById('mobilePredCards').style.display  = isMobile ? 'block' : 'none';
+    document.getElementById('desktopPredTable').style.display = isMobile ? 'none'  : 'block';
+    if (isMobile) renderMobilePredCards(); else updatePredictionsTable();
+}
+function renderMobilePredCards() {
+    initializeWeekData();
+    var fixtures = getActiveFixtures(), matchups = getActiveMatchups(), activePlayers = getActivePlayers(matchups);
+    var container = document.getElementById('mobilePredCards');
+    if (!activePlayers.length) { container.innerHTML='<div class="placeholder-text">No matchups set up yet</div>'; return; }
+    var html='';
+    for (var p=0;p<activePlayers.length;p++) {
+        var player=activePlayers[p], total=0;
+        html+='<div style="background:#f8f9ff;border-radius:8px;padding:12px;margin-bottom:10px;border:2px solid #e0e0e0;"><div style="font-weight:bold;font-size:15px;color:#3b4e87;margin-bottom:8px;">'+player+'</div>';
+        for (var f=0;f<fixtures.length;f++) {
+            var fix=fixtures[f], pred=(weekData[currentWeek].predictions[player]&&weekData[currentWeek].predictions[player][f])||'', scoreEl='';
+            if (fix.homeScore!==null&&fix.awayScore!==null) { var sc=pred?calculateScore(pred,[fix.homeScore,fix.awayScore]):null; if(sc!==null){total+=sc;scoreEl=' <span class="score-display score-'+sc+'">'+sc+'</span>';} }
+            html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #eee;font-size:13px;"><span style="color:#555;">'+fix.home+' v '+fix.away+'</span><span>'+(pred||'<em style="color:#aaa">-</em>')+scoreEl+'</span></div>';
+        }
+        html+='<div style="margin-top:8px;font-weight:bold;font-size:14px;text-align:right;">Total: '+total+'</div></div>';
+    }
+    container.innerHTML=html;
+}
+function getActiveFixtures() {
+    var out=[]; if(!weekData[currentWeek]||!weekData[currentWeek].fixtures) return out;
+    for(var i=0;i<weekData[currentWeek].fixtures.length;i++){var f=weekData[currentWeek].fixtures[i];if(f&&f.home&&f.away)out.push(f);}
+    return out;
+}
+function getActiveMatchups() {
+    var out=[]; if(!weekData[currentWeek]||!weekData[currentWeek].matchups) return out;
+    for(var i=0;i<weekData[currentWeek].matchups.length;i++){var m=weekData[currentWeek].matchups[i];if(m&&m.player1&&m.player2)out.push(m);}
+    return out;
+}
+function getActivePlayers(matchups) {
+    var seen={},out=[];
+    for(var i=0;i<matchups.length;i++){if(!seen[matchups[i].player1]){seen[matchups[i].player1]=1;out.push(matchups[i].player1);}if(!seen[matchups[i].player2]){seen[matchups[i].player2]=1;out.push(matchups[i].player2);}}
+    return out;
+}
+
+// ── STORAGE ──
+async function saveToPersistentStorage() {
+    try {
+        if (!window.storage) { updateStorageStatus('⚠️ Auto-save unavailable — use backup codes', false); return false; }
+        saveCurrentWeekFromDOM();
+        var data={weekData,seasonStats,currentWeek,lastSaved:new Date().toISOString()};
+        var result=await window.storage.set('prediction-league-data',JSON.stringify(data),false);
+        if(result){updateStorageStatus('✅ Auto-saved at '+new Date().toLocaleTimeString(),true);return true;}
+        updateStorageStatus('⚠️ Auto-save failed',false);return false;
+    } catch(e){updateStorageStatus('⚠️ Auto-save unavailable',false);return false;}
+}
+async function loadFromPersistentStorage() {
+    try {
+        if(!window.storage){updateStorageStatus('⚠️ Auto-save unavailable',false);return false;}
+        var result=await window.storage.get('prediction-league-data',false);
+        if(result&&result.value){
+            var data=JSON.parse(result.value);
+            weekData=data.weekData||{};seasonStats=data.seasonStats||{};currentWeek=data.currentWeek||1;
+            for(var i=0;i<allPlayers.length;i++) if(!seasonStats[allPlayers[i]]) seasonStats[allPlayers[i]]={played:0,won:0,drawn:0,lost:0,pointsFor:0,pointsAgainst:0,leaguePoints:0};
+            document.getElementById('weekSelect').value=currentWeek;
+            updateStorageStatus('✅ Loaded (saved: '+new Date(data.lastSaved).toLocaleString()+')',true);
+            return true;
+        }
+        updateStorageStatus('⚠️ No saved data found',false);return false;
+    } catch(e){updateStorageStatus('⚠️ Auto-save unavailable',false);return false;}
+}
+function updateStorageStatus(msg,ok){
+    var t=document.getElementById('storageStatusText'),c=document.getElementById('storageStatus');
+    if(t)t.textContent=msg;
+    if(c){c.style.background=ok?'#d4edda':'#fff3cd';c.style.borderColor=ok?'#28a745':'#ffc107';}
+}
+function saveToSession(){saveCurrentWeekFromDOM();window.predictionLeagueData={weekData,seasonStats,currentWeek};saveToPersistentStorage();}
+function autoSaveToSession(){saveCurrentWeekFromDOM();saveToSession();}
+function showSaveStatus(msg,type){var el=document.getElementById('saveStatus');el.textContent=msg;el.className='save-status save-'+type;el.style.display='block';setTimeout(function(){el.style.display='none';},3500);}
+
+// ── MATCHUPS ──
+function addMatchup(){
+    var grid=document.getElementById('matchupsGrid'),ph=grid.querySelector('.placeholder-text');
+    if(ph)ph.remove();
+    var idx=grid.querySelectorAll('.matchup-card').length,card=document.createElement('div');
+    card.className='matchup-card';card.innerHTML=buildMatchupHTML(idx,'','');grid.appendChild(card);
+    initializeWeekData();autoSaveToSession();
+}
+function buildMatchupHTML(idx,p1,p2){
+    var o1='<option value="">Player 1</option>',o2='<option value="">Player 2</option>';
+    for(var i=0;i<allPlayers.length;i++){o1+='<option value="'+allPlayers[i]+'"'+(allPlayers[i]===p1?' selected':'')+'>'+allPlayers[i]+'</option>';o2+='<option value="'+allPlayers[i]+'"'+(allPlayers[i]===p2?' selected':'')+'>'+allPlayers[i]+'</option>';}
+    return '<div class="matchup-players"><select onchange="updateMatchup('+idx+')">'+o1+'</select> vs <select onchange="updateMatchup('+idx+')">'+o2+'</select></div><div class="matchup-scores"><span class="player-score" id="score1_'+idx+'">-</span><span class="score-separator">-</span><span class="player-score" id="score2_'+idx+'">-</span></div><div id="result_'+idx+'"></div><button class="remove-btn" onclick="removeMatchup(this,'+idx+')">Remove</button>';
+}
+function removeMatchup(btn){btn.parentElement.remove();initializeWeekData();updatePredictionsTable();autoSaveToSession();}
+function updateMatchup(idx){
+    initializeWeekData();var cards=document.querySelectorAll('#matchupsGrid .matchup-card');
+    if(!cards[idx])return;var sels=cards[idx].querySelectorAll('select');
+    if(!weekData[currentWeek].matchups[idx])weekData[currentWeek].matchups[idx]={};
+    weekData[currentWeek].matchups[idx]={player1:sels[0].value,player2:sels[1].value};
+    updatePredictionsTable();autoSaveToSession();
+}
+
+// ── FIXTURES ──
+function addFixture(){
+    var grid=document.getElementById('fixturesGrid'),ph=grid.querySelector('.placeholder-text');if(ph)ph.remove();
+    var idx=grid.querySelectorAll('.fixture-card').length,card=document.createElement('div');
+    card.className='fixture-card';card.innerHTML=buildFixtureHTML(idx,'','',null,null);grid.appendChild(card);
+    updatePredictionsTable();autoSaveToSession();
+}
+function buildFixtureHTML(idx,home,away,hs,as_){
+    var opts='<option value="">Select Team</option>';
+    for(var t=0;t<premierLeagueTeams.length;t++)opts+='<option value="'+premierLeagueTeams[t]+'">'+premierLeagueTeams[t]+'</option>';
+    var hOpts=opts.replace('value="'+home+'"','value="'+home+'" selected'),aOpts=opts.replace('value="'+away+'"','value="'+away+'" selected');
+    return '<div class="match-teams"><select class="team-select" onchange="updateFixture('+idx+')">'+hOpts+'</select> vs <select class="team-select" onchange="updateFixture('+idx+')">'+aOpts+'</select></div><div class="score-input"><input type="number" min="0" max="10" placeholder="0" value="'+(hs!==null&&hs!==undefined?hs:'')+'" onchange="updateFixture('+idx+')"><span class="vs">-</span><input type="number" min="0" max="10" placeholder="0" value="'+(as_!==null&&as_!==undefined?as_:'')+'" onchange="updateFixture('+idx+')"></div><button class="remove-btn" onclick="removeFixture(this,'+idx+')">Remove</button>';
+}
+function removeFixture(btn){btn.parentElement.remove();updatePredictionsTable();autoSaveToSession();}
+function updateFixture(idx){
+    initializeWeekData();var cards=document.querySelectorAll('#fixturesGrid .fixture-card');if(!cards[idx])return;
+    var sels=cards[idx].querySelectorAll('select'),inputs=cards[idx].querySelectorAll('input');
+    savePredictionsFromDOM();
+    var hs=inputs[0].value!==''?parseInt(inputs[0].value):null,as_=inputs[1].value!==''?parseInt(inputs[1].value):null;
+    weekData[currentWeek].fixtures[idx]={home:sels[0].value,away:sels[1].value,homeScore:hs,awayScore:as_};
+    if(hs!==null&&as_!==null)cards[idx].classList.add('has-result');else cards[idx].classList.remove('has-result');
+    autoSaveToSession();
+}
+function initializeWeekData(){if(!weekData[currentWeek])weekData[currentWeek]={matchups:[],fixtures:[],predictions:{}};}
+
+// ── PREDICTIONS TABLE ──
+function updatePredictionsTable(){
+    initializeWeekData();
+    var fixtures=getActiveFixtures(),matchups=getActiveMatchups(),activePlayers=getActivePlayers(matchups);
+    var headers=document.getElementById('tableHeaders'),body=document.getElementById('tableBody');
+    if(!headers||!body)return;
+    var hHTML='<tr><th>Player</th>';
+    for(var f=0;f<fixtures.length;f++)hHTML+='<th>'+fixtures[f].home+'<br>vs<br>'+fixtures[f].away+'</th>';
+    hHTML+='<th>Total</th></tr>';headers.innerHTML=hHTML;
+    var bHTML='';
+    for(var p=0;p<activePlayers.length;p++){
+        var player=activePlayers[p];
+        bHTML+='<tr><td>'+player+'</td>';
+        for(var f=0;f<fixtures.length;f++)bHTML+='<td><input type="text" class="prediction-input" placeholder="2-1" id="pred_'+player+'_'+f+'" onchange="savePrediction(\''+player+'\','+f+',this.value)"><div class="score-display" id="score_'+player+'_'+f+'"></div></td>';
+        bHTML+='<td class="total-score" id="total_'+player+'">0</td></tr>';
+    }
+    body.innerHTML=bHTML;
+    setTimeout(function(){restorePredictionsToDOM();},10);
+}
+function restorePredictionsToDOM(){
+    if(!weekData[currentWeek]||!weekData[currentWeek].predictions)return;
+    for(var player in weekData[currentWeek].predictions)
+        for(var fi in weekData[currentWeek].predictions[player]){var el=document.getElementById('pred_'+player+'_'+fi);if(el)el.value=weekData[currentWeek].predictions[player][fi];}
+}
+function savePrediction(player,fi,val){initializeWeekData();if(!weekData[currentWeek].predictions[player])weekData[currentWeek].predictions[player]={};weekData[currentWeek].predictions[player][fi]=val;autoSaveToSession();}
+function savePredictionsFromDOM(){
+    initializeWeekData();
+    document.querySelectorAll('.prediction-input').forEach(function(inp){
+        if(!inp.id||!inp.value)return;
+        var parts=inp.id.replace('pred_','').split('_');if(parts.length<2)return;
+        var player=parts[0],fi=parts[1];
+        if(!weekData[currentWeek].predictions[player])weekData[currentWeek].predictions[player]={};
+        weekData[currentWeek].predictions[player][fi]=inp.value;
+    });
+}
+
+// ── SCORE CALCULATION ──
+function parseScore(s){if(!s)return null;var m=s.trim().replace(/\s+/g,'').match(/(\d+)[-–—](\d+)/);return m?[parseInt(m[1]),parseInt(m[2])]:null;}
+function getResult(h,a){return h>a?'home':a>h?'away':'draw';}
+function calculateScore(pred,actual){
+    var ps=parseScore(pred);
+    if(!ps||actual[0]===null||actual[1]===null||isNaN(actual[0])||isNaN(actual[1]))return 0;
+    if(parseInt(ps[0])===parseInt(actual[0])&&parseInt(ps[1])===parseInt(actual[1]))return 3;
+    if(getResult(ps[0],ps[1])===getResult(actual[0],actual[1]))return 1;
+    return 0;
+}
+
+// ── CALCULATE WEEK ──
+function calculateWeekScores(){
+    savePredictionsFromDOM();initializeWeekData();
+    var fixtures=getActiveFixtures(),matchups=getActiveMatchups(),allPreds=weekData[currentWeek].predictions||{},playerScores={};
+    for(var player in allPreds){
+        var total=0;
+        for(var f=0;f<fixtures.length;f++){
+            var fix=fixtures[f],pred=allPreds[player]&&allPreds[player][f];if(!pred)continue;
+            if(fix.homeScore===null||fix.homeScore===''||fix.awayScore===null||fix.awayScore==='')continue;
+            var sc=calculateScore(pred,[fix.homeScore,fix.awayScore]);
+            var scoreEl=document.getElementById('score_'+player+'_'+f);
+            if(scoreEl){scoreEl.textContent=sc;scoreEl.className='score-display score-'+sc;}
+            total+=sc;
+        }
+        playerScores[player]=total;
+        var totalEl=document.getElementById('total_'+player);if(totalEl)totalEl.textContent=total;
+    }
+    for(var m=0;m<matchups.length;m++){
+        var mu=matchups[m];if(!mu.player1||!mu.player2)continue;
+        var raw=weekData[currentWeek].matchups;
+        if(!seasonStats[mu.player1].weekPlayed)seasonStats[mu.player1].weekPlayed={};
+        if(!seasonStats[mu.player2].weekPlayed)seasonStats[mu.player2].weekPlayed={};
+        if(seasonStats[mu.player1].weekPlayed[currentWeek]){
+            var os1=raw[m].score1||0,os2=raw[m].score2||0;
+            seasonStats[mu.player1].played--;seasonStats[mu.player2].played--;
+            seasonStats[mu.player1].pointsFor-=os1;seasonStats[mu.player1].pointsAgainst-=os2;
+            seasonStats[mu.player2].pointsFor-=os2;seasonStats[mu.player2].pointsAgainst-=os1;
+            if(os1>os2){seasonStats[mu.player1].won--;seasonStats[mu.player1].leaguePoints-=3;seasonStats[mu.player2].lost--;}
+            else if(os2>os1){seasonStats[mu.player2].won--;seasonStats[mu.player2].leaguePoints-=3;seasonStats[mu.player1].lost--;}
+            else if(os1===os2&&os1>0){seasonStats[mu.player1].drawn--;seasonStats[mu.player2].drawn--;seasonStats[mu.player1].leaguePoints-=1;seasonStats[mu.player2].leaguePoints-=1;}
+        }
+        var s1=playerScores[mu.player1]||0,s2=playerScores[mu.player2]||0;
+        var s1El=document.getElementById('score1_'+m),s2El=document.getElementById('score2_'+m);
+        if(s1El)s1El.textContent=s1;if(s2El)s2El.textContent=s2;
+        var resEl=document.getElementById('result_'+m),cards=document.querySelectorAll('#matchupsGrid .matchup-card');
+        seasonStats[mu.player1].played++;seasonStats[mu.player2].played++;
+        seasonStats[mu.player1].pointsFor+=s1;seasonStats[mu.player1].pointsAgainst+=s2;
+        seasonStats[mu.player2].pointsFor+=s2;seasonStats[mu.player2].pointsAgainst+=s1;
+        if(s1>s2){seasonStats[mu.player1].won++;seasonStats[mu.player1].leaguePoints+=3;seasonStats[mu.player2].lost++;if(resEl)resEl.innerHTML='<div class="winner">'+mu.player1+' wins!</div>';}
+        else if(s2>s1){seasonStats[mu.player2].won++;seasonStats[mu.player2].leaguePoints+=3;seasonStats[mu.player1].lost++;if(resEl)resEl.innerHTML='<div class="winner">'+mu.player2+' wins!</div>';}
+        else{seasonStats[mu.player1].drawn++;seasonStats[mu.player2].drawn++;seasonStats[mu.player1].leaguePoints+=1;seasonStats[mu.player2].leaguePoints+=1;if(resEl)resEl.innerHTML='<div style="color:#ffc107;font-weight:bold;">Draw!</div>';}
+        seasonStats[mu.player1].weekPlayed[currentWeek]=true;seasonStats[mu.player2].weekPlayed[currentWeek]=true;
+        if(cards[m])cards[m].classList.add('completed');
+        if(!weekData[currentWeek].matchups[m])weekData[currentWeek].matchups[m]={};
+        weekData[currentWeek].matchups[m].score1=s1;weekData[currentWeek].matchups[m].score2=s2;
+    }
+    updateLeagueTable();autoSaveToSession();
+}
+
+// ── LEAGUE TABLES ──
+function updateLeagueTable(){
+    // Table 1: by league points
+    var rows=allPlayers.map(function(p){
+        var s=seasonStats[p];
+        return {player:p,played:s.played,won:s.won,drawn:s.drawn,lost:s.lost,pointsFor:s.pointsFor,pointsAgainst:s.pointsAgainst,diff:s.pointsFor-s.pointsAgainst,leaguePoints:s.leaguePoints};
+    });
+    rows.sort(function(a,b){return b.leaguePoints-a.leaguePoints||b.pointsFor-a.pointsFor||b.diff-a.diff;});
+    document.getElementById('leagueTableBody').innerHTML=rows.map(function(r,i){
+        var dc=r.diff>=0?'diff-positive':'diff-negative',dt=r.diff>=0?'+'+r.diff:r.diff;
+        var rankClass=i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+        return '<tr class="'+rankClass+'"><td>'+(i+1)+'</td><td>'+r.player+'</td><td>'+r.played+'</td><td>'+r.won+'</td><td>'+r.drawn+'</td><td>'+r.lost+'</td><td>'+r.pointsFor+'</td><td>'+r.pointsAgainst+'</td><td class="'+dc+'">'+dt+'</td><td><strong>'+r.leaguePoints+'</strong></td></tr>';
+    }).join('');
+
+    // Table 2: by points for
+    var rows2=allPlayers.map(function(p){
+        var s=seasonStats[p];
+        var avg=s.played>0?(s.pointsFor/s.played).toFixed(1):'0.0';
+        return {player:p,played:s.played,pointsFor:s.pointsFor,pointsAgainst:s.pointsAgainst,diff:s.pointsFor-s.pointsAgainst,avg:avg};
+    });
+    rows2.sort(function(a,b){return b.pointsFor-a.pointsFor||(b.pointsFor-b.pointsAgainst)-(a.pointsFor-a.pointsAgainst);});
+    document.getElementById('scoringTableBody').innerHTML=rows2.map(function(r,i){
+        var dc=r.diff>=0?'diff-positive':'diff-negative',dt=r.diff>=0?'+'+r.diff:r.diff;
+        var rankClass=i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+        return '<tr class="'+rankClass+'"><td>'+(i+1)+'</td><td>'+r.player+'</td><td>'+r.played+'</td><td><strong>'+r.pointsFor+'</strong></td><td>'+r.pointsAgainst+'</td><td class="'+dc+'">'+dt+'</td><td>'+r.avg+'</td></tr>';
+    }).join('');
+}
+
+// ── WEEK MANAGEMENT ──
+function clearWeekData(){
+    if(weekData[currentWeek]&&weekData[currentWeek].matchups){
+        weekData[currentWeek].matchups.forEach(function(mu){
+            if(!mu||!mu.player1||!mu.player2||mu.score1===undefined)return;
+            var s1=mu.score1,s2=mu.score2;
+            [[mu.player1,s1,s2],[mu.player2,s2,s1]].forEach(function(arr){
+                var pl=arr[0],fp=arr[1],op=arr[2];
+                seasonStats[pl].played--;seasonStats[pl].pointsFor-=fp;seasonStats[pl].pointsAgainst-=op;
+                if(fp>op){seasonStats[pl].won--;seasonStats[pl].leaguePoints-=3;}
+                else if(op>fp){seasonStats[pl].lost--;}
+                else if(fp===op&&fp>0){seasonStats[pl].drawn--;seasonStats[pl].leaguePoints-=1;}
+            });
+        });
+    }
+    weekData[currentWeek]={matchups:[],fixtures:[],predictions:{}};
+    document.getElementById('matchupsGrid').innerHTML='<div class="placeholder-text">Click "+ Add" to set up pairings</div>';
+    document.getElementById('fixturesGrid').innerHTML='<div class="placeholder-text">Load or add this week\'s fixtures</div>';
+    updatePredictionsTable();updateLeagueTable();autoSaveToSession();showSaveStatus('GW'+currentWeek+' cleared','success');
+}
+function changeWeek(){saveCurrentWeekFromDOM();currentWeek=parseInt(document.getElementById('weekSelect').value);document.getElementById('currentWeekDisplay').textContent='Gameweek '+currentWeek;loadWeekDisplay();saveToSession();}
+function saveCurrentWeekFromDOM(){
+    initializeWeekData();
+    weekData[currentWeek].matchups=[];
+    document.querySelectorAll('#matchupsGrid .matchup-card').forEach(function(card,i){var sels=card.querySelectorAll('select');if(sels[0]&&sels[1]&&sels[0].value&&sels[1].value)weekData[currentWeek].matchups[i]={player1:sels[0].value,player2:sels[1].value};});
+    weekData[currentWeek].fixtures=[];
+    document.querySelectorAll('#fixturesGrid .fixture-card').forEach(function(card,i){var sels=card.querySelectorAll('select'),inps=card.querySelectorAll('input');if(sels[0]&&sels[1]&&sels[0].value&&sels[1].value)weekData[currentWeek].fixtures[i]={home:sels[0].value,away:sels[1].value,homeScore:inps[0].value!==''?parseInt(inps[0].value):null,awayScore:inps[1].value!==''?parseInt(inps[1].value):null};});
+    savePredictionsFromDOM();
+}
+function loadWeekDisplay(){
+    initializeWeekData();
+    document.getElementById('currentWeekDisplay').textContent='Gameweek '+currentWeek;
+    var mGrid=document.getElementById('matchupsGrid'),fGrid=document.getElementById('fixturesGrid');
+    mGrid.innerHTML='';fGrid.innerHTML='';var hasM=false,hasF=false;
+    var matchups=weekData[currentWeek].matchups||[];
+    for(var i=0;i<matchups.length;i++){
+        var mu=matchups[i];if(!mu||!mu.player1||!mu.player2)continue;hasM=true;
+        var card=document.createElement('div');card.className='matchup-card';card.innerHTML=buildMatchupHTML(i,mu.player1,mu.player2);
+        if(mu.score1!==undefined){card.querySelector('#score1_'+i).textContent=mu.score1;card.querySelector('#score2_'+i).textContent=mu.score2;var rEl=card.querySelector('#result_'+i);if(mu.score1>mu.score2)rEl.innerHTML='<div class="winner">'+mu.player1+' wins!</div>';else if(mu.score2>mu.score1)rEl.innerHTML='<div class="winner">'+mu.player2+' wins!</div>';else rEl.innerHTML='<div style="color:#ffc107;font-weight:bold;">Draw!</div>';card.classList.add('completed');}
+        mGrid.appendChild(card);
+    }
+    var fixtures=weekData[currentWeek].fixtures||[];
+    for(var j=0;j<fixtures.length;j++){
+        var fix=fixtures[j];if(!fix||!fix.home||!fix.away)continue;hasF=true;
+        var fcard=document.createElement('div');fcard.className='fixture-card'+(fix.homeScore!==null&&fix.homeScore!==undefined?' has-result':'');
+        fcard.innerHTML=buildFixtureHTML(j,fix.home,fix.away,fix.homeScore,fix.awayScore);fGrid.appendChild(fcard);
+    }
+    if(!hasM)mGrid.innerHTML='<div class="placeholder-text">Click "+ Add" to set up pairings</div>';
+    if(!hasF)fGrid.innerHTML='<div class="placeholder-text">Load or add this week\'s fixtures</div>';
+    updatePredictionsTable();
+    setTimeout(function(){restorePredictionsToDOM();var hasResults=fixtures.some(function(f){return f&&f.homeScore!==null&&f.awayScore!==null;});if(hasResults)calculateWeekScores();},200);
+}
+
+// ── API: LOAD FIXTURES ──
+function applyFixtures(arr){
+    initializeWeekData();weekData[currentWeek].fixtures=[];
+    var fGrid=document.getElementById('fixturesGrid');fGrid.innerHTML='';
+    arr.forEach(function(f,i){
+        weekData[currentWeek].fixtures.push({home:f.home,away:f.away,homeScore:null,awayScore:null});
+        var card=document.createElement('div');card.className='fixture-card';
+        card.innerHTML=buildFixtureHTML(i,f.home,f.away,null,null);fGrid.appendChild(card);
+    });
+    weekData[currentWeek].matchups=[];var mGrid=document.getElementById('matchupsGrid');mGrid.innerHTML='';var mc=0;
+    arr.forEach(function(f){
+        var hp=teamPlayers[f.home],ap=teamPlayers[f.away];if(!hp||!ap)return;
+        weekData[currentWeek].matchups.push({player1:hp,player2:ap});
+        var card=document.createElement('div');card.className='matchup-card';
+        card.innerHTML=buildMatchupHTML(mc,hp,ap)+'<div style="text-align:center;color:#666;font-size:11px;margin-top:4px;">('+f.home+' v '+f.away+')</div>';
+        mGrid.appendChild(card);mc++;
+    });
+    if(!mc)mGrid.innerHTML='<div class="placeholder-text">No auto-matchups found — add manually</div>';
+    updatePredictionsTable();autoSaveToSession();
+    return mc;
+}
+
+async function loadFixturesFromAPI(){
+    var btn=document.getElementById('loadFixturesBtn');btn.textContent='⏳…';btn.disabled=true;
+    // 1. Try hardcoded fallback first (fast & works on mobile)
+    if(gwFixtures[currentWeek]){
+        var mc=applyFixtures(gwFixtures[currentWeek]);
+        showSaveStatus('✅ Loaded '+gwFixtures[currentWeek].length+' fixtures & '+mc+' matchups for GW'+currentWeek,'success');
+        btn.textContent='🔄 Load GW';btn.disabled=false;return;
+    }
+    // 2. Try API for GWs without hardcoded data
+    try {
+        var controller=new AbortController(),tid=setTimeout(function(){controller.abort();},12000);
+        var dh=gwDateHints[currentWeek]?' — matches played around '+gwDateHints[currentWeek]:'';
+        var res=await fetch("https://api.anthropic.com/v1/messages",{
+            method:"POST",signal:controller.signal,
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+                tools:[{type:"web_search_20250305",name:"web_search"}],
+                system:"Football data assistant. Return ONLY a raw JSON array of fixtures. No markdown, no explanation.",
+                messages:[{role:"user",content:"Search for 'FPL gameweek "+currentWeek+" fixtures 2025/26'"+dh+". Find all 10 Premier League fixtures for FPL Gameweek "+currentWeek+" of the 2025/26 season. Return ONLY a JSON array like [{\"home\":\"Arsenal\",\"away\":\"Chelsea\"}]. Use these exact team names: Arsenal, Aston Villa, Bournemouth, Brentford, Brighton, Burnley, Chelsea, Crystal Palace, Everton, Fulham, Leeds United, Liverpool, Manchester City, Manchester United, Newcastle, Nottingham Forest, Sunderland, Tottenham, West Ham, Wolves. Return ONLY the JSON array, nothing else."}]})
+        });
+        clearTimeout(tid);
+        var data=await res.json();
+        var text=data.content.map(function(b){return b.type==='text'?b.text:'';}).join('').replace(/```json|```/g,'').trim();
+        var arr=JSON.parse(text.match(/\[[\s\S]*\]/)[0]);
+        if(!arr.length)throw new Error('No fixtures returned');
+        var mc=applyFixtures(arr);
+        showSaveStatus('✅ Loaded '+arr.length+' fixtures & '+mc+' matchups for GW'+currentWeek,'success');
+    } catch(e){
+        var msg=e.name==='AbortError'?'Timed out — no hardcoded data for GW'+currentWeek+', add fixtures manually':'Could not load: '+e.message;
+        showSaveStatus('❌ '+msg,'error');
+    }
+    finally{btn.textContent='🔄 Load GW';btn.disabled=false;}
+}
+
+// ── API: LOAD RESULTS ──
+async function loadResultsFromAPI(){
+    var btn=document.getElementById('loadResultsBtn');btn.textContent='⏳…';btn.disabled=true;
+    try {
+        initializeWeekData();var fixtures=getActiveFixtures();if(!fixtures.length){showSaveStatus('❌ Load fixtures first!','error');return;}
+        var list=fixtures.map(function(f){return f.home+' v '+f.away;}).join(', ');
+        var dh=gwDateHints[currentWeek]?' (played around '+gwDateHints[currentWeek]+')':'';
+        var res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,tools:[{type:"web_search_20250305",name:"web_search"}],system:"Football results assistant. Return ONLY a raw JSON array. No markdown.",messages:[{role:"user",content:"Search for 'FPL gameweek "+currentWeek+" results 2025/26'"+dh+". Find final scores for: "+list+". Return ONLY a JSON array like [{\"home\":\"Arsenal\",\"away\":\"Chelsea\",\"homeScore\":2,\"awayScore\":1}]. Omit unplayed matches. Return ONLY the JSON array."}]})});
+        var data=await res.json();
+        var text=data.content.map(function(b){return b.type==='text'?b.text:'';}).join('').replace(/```json|```/g,'').trim();
+        var results=JSON.parse(text.match(/\[[\s\S]*\]/)[0]);if(!results.length)throw new Error('No results yet');
+        var fCards=document.querySelectorAll('#fixturesGrid .fixture-card'),updated=0;
+        results.forEach(function(r){
+            for(var f=0;f<fixtures.length;f++){
+                if(fixtures[f].home.toLowerCase()===r.home.toLowerCase()&&fixtures[f].away.toLowerCase()===r.away.toLowerCase()){
+                    weekData[currentWeek].fixtures[f].homeScore=r.homeScore;weekData[currentWeek].fixtures[f].awayScore=r.awayScore;
+                    if(fCards[f]){var inps=fCards[f].querySelectorAll('input');if(inps[0])inps[0].value=r.homeScore;if(inps[1])inps[1].value=r.awayScore;fCards[f].classList.add('has-result');}
+                    updated++;break;
+                }
+            }
+        });
+        autoSaveToSession();showSaveStatus('✅ Loaded '+updated+' result'+(updated!==1?'s':'')+' — click Calculate!','success');
+    } catch(e){showSaveStatus('❌ Could not load results: '+e.message,'error');}
+    finally{btn.textContent='📥 Results';btn.disabled=false;}
+}
+
+// ── FORM QUESTIONS ──
+function generateFormQuestions(){
+    initializeWeekData();var fixtures=getActiveFixtures();
+    if(!fixtures.length){showSaveStatus('❌ No fixtures loaded!','error');return;}
+    var lines=['QUESTION 1: Your Name','(Short answer)',''];
+    fixtures.forEach(function(f,i){lines.push('QUESTION '+(i+2)+': '+f.home+' v '+f.away,'Enter score prediction (e.g. 2-1)','(Short answer)',i<fixtures.length-1?'':'');});
+    document.getElementById('formGWNumber').textContent=currentWeek;
+    document.getElementById('formQuestionsList').textContent=lines.join('\n');
+    document.getElementById('formQuestionsOverlay').style.display='block';
+    document.getElementById('formQuestionsModal').style.display='block';
+    document.getElementById('formCopyStatus').style.display='none';
+}
+function hideFormQuestions(){document.getElementById('formQuestionsOverlay').style.display='none';document.getElementById('formQuestionsModal').style.display='none';}
+function copyFormQuestions(){
+    var text=document.getElementById('formQuestionsList').textContent,st=document.getElementById('formCopyStatus');
+    var copy=function(t){var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');st.textContent='✅ Copied!';st.style.color='#28a745';}catch(e){st.textContent='❌ Copy failed';st.style.color='#dc3545';}st.style.display='block';document.body.removeChild(ta);};
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(function(){st.textContent='✅ Copied!';st.style.color='#28a745';st.style.display='block';}).catch(function(){copy(text);});
+    else copy(text);
+}
+
+// ── TEAM POPUP ──
+function showTeamAssignments(){document.getElementById('teamPopup').style.display='block';document.getElementById('teamPopupOverlay').style.display='block';}
+function hideTeamAssignments(){document.getElementById('teamPopup').style.display='none';document.getElementById('teamPopupOverlay').style.display='none';}
+
+// ── BACKUP / RESTORE ──
+function getSerializedData(){saveCurrentWeekFromDOM();return JSON.stringify({weekData,seasonStats,currentWeek,saveDate:new Date().toISOString(),version:'3.1'});}
+function copyDataToClipboard(){
+    var str='PREMIER_LEAGUE_BACKUP_START'+getSerializedData()+'PREMIER_LEAGUE_BACKUP_END';
+    var copy=function(t){var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');showSaveStatus('✅ Backup code copied!','success');}catch(e){showSaveStatus('❌ Copy failed','error');}document.body.removeChild(ta);};
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(str).then(function(){showSaveStatus('✅ Backup code copied!','success');}).catch(function(){copy(str);});else copy(str);
+}
+function showPasteDialog(){document.getElementById('pasteDialog').style.display='block';document.getElementById('pasteArea').focus();}
+function hidePasteDialog(){document.getElementById('pasteDialog').style.display='none';document.getElementById('pasteArea').value='';}
+function loadFromPaste(){
+    var txt=document.getElementById('pasteArea').value.trim();if(!txt){showSaveStatus('❌ Paste your backup code first','error');return;}
+    importDataString(txt);hidePasteDialog();
+}
+function importDataString(txt){
+    try {
+        var sm='PREMIER_LEAGUE_BACKUP_START',em='PREMIER_LEAGUE_BACKUP_END',si=txt.indexOf(sm),ei=txt.indexOf(em);
+        var data=JSON.parse(si===-1?txt:txt.substring(si+sm.length,ei));
+        if(!data.weekData&&!data.seasonStats)throw new Error('Invalid format');
+        weekData=data.weekData||{};seasonStats=data.seasonStats||{};currentWeek=data.currentWeek||1;
+        for(var i=0;i<allPlayers.length;i++)if(!seasonStats[allPlayers[i]])seasonStats[allPlayers[i]]={played:0,won:0,drawn:0,lost:0,pointsFor:0,pointsAgainst:0,leaguePoints:0};
+        document.getElementById('weekSelect').value=currentWeek;
+        document.getElementById('currentWeekDisplay').textContent='Gameweek '+currentWeek;
+        setTimeout(function(){loadWeekDisplay();updateLeagueTable();saveToSession();showSaveStatus('✅ Loaded! Restored '+Object.keys(weekData).length+' weeks','success');},100);
+    } catch(e){showSaveStatus('❌ Invalid data: '+e.message,'error');}
+}
+function downloadSave(){
+    var blob=new Blob([getSerializedData()],{type:'application/json'});
+    var url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='pl-predictions-'+new Date().toISOString().split('T')[0]+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showSaveStatus('💾 JSON downloaded','success');
+}
+function downloadTxt(){
+    var str='PREMIER_LEAGUE_BACKUP_START'+getSerializedData()+'PREMIER_LEAGUE_BACKUP_END';
+    var blob=new Blob([str],{type:'text/plain'});
+    var url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='pl-predictions-'+new Date().toISOString().split('T')[0]+'.txt';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showSaveStatus('📄 TXT downloaded','success');
+}
+function uploadSave(e){
+    var file=e.target.files[0];if(!file)return;
+    var r=new FileReader();
+    r.onload=function(ev){importDataString(ev.target.result.trim());};
+    r.readAsText(file);e.target.value='';
+}
+function clearAllData(){
+    weekData={};currentWeek=1;
+    for(var i=0;i<allPlayers.length;i++)seasonStats[allPlayers[i]]={played:0,won:0,drawn:0,lost:0,pointsFor:0,pointsAgainst:0,leaguePoints:0};
+    document.getElementById('weekSelect').value=1;document.getElementById('currentWeekDisplay').textContent='Gameweek 1';
+    document.getElementById('matchupsGrid').innerHTML='<div class="placeholder-text">Click "+ Add" to set up pairings</div>';
+    document.getElementById('fixturesGrid').innerHTML='<div class="placeholder-text">Load or add this week\'s fixtures</div>';
+    updatePredictionsTable();updateLeagueTable();saveToSession();
+    if(window.storage)window.storage.delete('prediction-league-data',false).catch(function(){});
+    showSaveStatus('🗑️ All data cleared','success');
+}
+function saveToSession(){saveCurrentWeekFromDOM();window.predictionLeagueData={weekData,seasonStats,currentWeek};saveToPersistentStorage();}
+function autoSaveToSession(){saveCurrentWeekFromDOM();saveToSession();}
+
+// ── GOOGLE SHEETS IMPORT ──
+function showSheetImportDialog(){document.getElementById('sheetImportDialog').style.display='block';document.getElementById('sheetPasteArea').focus();}
+function hideSheetImportDialog(){document.getElementById('sheetImportDialog').style.display='none';document.getElementById('sheetPasteArea').value='';document.getElementById('importPreview').style.display='none';}
+function parseSheetData(txt){return txt.trim().split('\n').map(function(line){return line.split('\t').map(function(c){return c.replace(/\r?\n/g,'');});});}
+function extractFixturesFromHeaders(hdr){
+    var out=[];
+    for(var i=2;i<hdr.length;i++){var t=hdr[i].trim();if(!t)continue;var m=t.match(/(.+?)\s*v\s*(.+)/i);if(m)out.push({home:normalizeTeamName(m[1]),away:normalizeTeamName(m[2]),index:i-2,original:t});}
+    return out;
+}
+function previewSheetImport(){
+    try {
+        var rows=parseSheetData(document.getElementById('sheetPasteArea').value),fixtures=extractFixturesFromHeaders(rows[0]),pc=rows.length-1;
+        var html='<div style="color:#28a745"><strong>✓ Valid!</strong></div><div style="margin-top:8px;">📊 <strong>'+fixtures.length+'</strong> fixtures &nbsp; 👥 <strong>'+pc+'</strong> players<br><strong>Fixtures:</strong> '+fixtures.slice(0,3).map(function(f){return f.home+' v '+f.away;}).join(', ')+(fixtures.length>3?'…':'')+'<br><strong>Players:</strong> '+rows.slice(1,4).map(function(r){return r[1];}).join(', ')+(rows.length>4?'…':'')+'</div>';
+        document.getElementById('importPreviewContent').innerHTML=html;document.getElementById('importPreview').style.display='block';
+    } catch(e){document.getElementById('importPreviewContent').innerHTML='<div style="color:#dc3545">❌ '+e.message+'</div>';document.getElementById('importPreview').style.display='block';}
+}
+function importSheetData(){
+    try {
+        var rows=parseSheetData(document.getElementById('sheetPasteArea').value),fixtures=extractFixturesFromHeaders(rows[0]);
+        if(!fixtures.length)throw new Error('No fixtures found');
+        initializeWeekData();weekData[currentWeek].fixtures=[];weekData[currentWeek].predictions={};
+        var fGrid=document.getElementById('fixturesGrid');fGrid.innerHTML='';
+        fixtures.forEach(function(f,i){weekData[currentWeek].fixtures.push({home:f.home,away:f.away,homeScore:null,awayScore:null});var card=document.createElement('div');card.className='fixture-card';card.innerHTML=buildFixtureHTML(i,f.home,f.away,null,null);fGrid.appendChild(card);});
+        rows.slice(1).forEach(function(row){var name=row[1]?row[1].trim():'';if(!name)return;weekData[currentWeek].predictions[name]={};fixtures.forEach(function(f){var pred=row[f.index+2]?row[f.index+2].trim():'';if(pred)weekData[currentWeek].predictions[name][f.index]=pred;});});
+        weekData[currentWeek].matchups=[];var mGrid=document.getElementById('matchupsGrid');mGrid.innerHTML='';var mc=0;
+        fixtures.forEach(function(f){var hp=teamPlayers[f.home],ap=teamPlayers[f.away];if(!hp||!ap)return;weekData[currentWeek].matchups.push({player1:hp,player2:ap});var card=document.createElement('div');card.className='matchup-card';card.innerHTML=buildMatchupHTML(mc,hp,ap)+'<div style="text-align:center;color:#666;font-size:11px;margin-top:4px;">('+f.home+' v '+f.away+')</div>';mGrid.appendChild(card);mc++;});
+        if(!mc)mGrid.innerHTML='<div class="placeholder-text">No auto-matchups — add manually</div>';
+        updatePredictionsTable();setTimeout(function(){restorePredictionsToDOM();},100);
+        autoSaveToSession();hideSheetImportDialog();showSaveStatus('✅ Imported '+fixtures.length+' fixtures, '+mc+' matchups!','success');
+    } catch(e){showSaveStatus('❌ Import failed: '+e.message,'error');}
+}
+
+// ── INIT ──
+window.addEventListener('resize',function(){if(document.getElementById('tab-predictions').classList.contains('active'))renderPredictionsView();});
+window.onload=function(){
+    loadFromPersistentStorage().then(function(loaded){
+        if(!loaded&&!window.predictionLeagueData){updatePredictionsTable();}
+        else{loadWeekDisplay();}
+        document.getElementById('currentWeekDisplay').textContent='Gameweek '+currentWeek;
+        updateLeagueTable();
+    });
+};
+</script>
+</body>
+</html>
